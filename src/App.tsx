@@ -1,13 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { PDFFile } from './types';
+import {
+  ChakraProvider,
+  Box,
+  VStack,
+  Heading,
+  Text,
+  Input,
+  Button,
+  List,
+  ListItem,
+  HStack,
+  useToast,
+  Container,
+} from '@chakra-ui/react';
 
 const API_URL = 'http://localhost:5000';
 
 function App() {
   const [files, setFiles] = useState<PDFFile[]>([]);
-  const [message, setMessage] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     fetchFiles();
@@ -19,6 +33,12 @@ function App() {
       setFiles(response.data.files);
     } catch (error) {
       console.error('Error fetching files:', error);
+      toast({
+        title: 'Error fetching files',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
     }
   };
 
@@ -39,11 +59,22 @@ function App() {
       const response = await axios.post(`${API_URL}/`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      setMessage(response.data.message);
+      toast({
+        title: 'File uploaded',
+        description: response.data.message,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
       fetchFiles();
     } catch (error) {
       console.error('Error uploading file:', error);
-      setMessage('Error uploading file');
+      toast({
+        title: 'Error uploading file',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
     }
   };
 
@@ -51,41 +82,75 @@ function App() {
     try {
       await axios.delete(`${API_URL}/${filename}`);
       fetchFiles();
+      toast({
+        title: 'File deleted',
+        status: 'info',
+        duration: 3000,
+        isClosable: true,
+      });
     } catch (error) {
       console.error('Error deleting file:', error);
+      toast({
+        title: 'Error deleting file',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
     }
   };
 
   const handleExtract = async (filename: string) => {
     try {
       const response = await axios.get(`${API_URL}/extract/${filename}`);
-      console.log(JSON.stringify(response.data, null, 2));
+      toast({
+        title: 'Data extracted',
+        description: JSON.stringify(response.data, null, 2),
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
     } catch (error) {
       console.error('Error extracting data:', error);
-      alert('Error extracting data');
+      toast({
+        title: 'Error extracting data',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
     }
   };
 
   return (
-    <div className="App">
-      <h1>PDF Manager</h1>
-      {message && <p>{message}</p>}
-      <form onSubmit={handleUpload}>
-        <input type="file" onChange={handleFileChange} accept=".pdf" />
-        <button type="submit">Upload</button>
-      </form>
-      <h2>Uploaded Files:</h2>
-      <ul>
-        {files.map((file) => (
-          <li key={file.name}>
-            {file.name}
-            <button onClick={() => handleDelete(file.name)}>Delete</button>
-            <a href={`${API_URL}/uploads/${file.name}`} target="_blank" rel="noopener noreferrer">View</a>
-            <button onClick={() => handleExtract(file.name)}>Extract Data</button>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <ChakraProvider>
+      <Container maxW="xl" centerContent>
+        <VStack spacing={8} width="100%" py={10}>
+          <Heading>Sheet Manager</Heading>
+          <Box as="form" onSubmit={handleUpload} width="100%">
+            <VStack spacing={4}>
+              <Input type="file" onChange={handleFileChange} accept=".pdf" />
+              <Button type="submit" colorScheme="blue" width="100%">Upload</Button>
+            </VStack>
+          </Box>
+          <VStack width="100%" align="stretch">
+            <Heading size="md">Uploaded Files:</Heading>
+            <List spacing={3}>
+              {files.map((file) => (
+                <ListItem key={file.name} borderWidth={1} p={4} borderRadius="md">
+                  <HStack justify="space-between">
+                    <Text>{file.name}</Text>
+                    <HStack>
+                      <Button onClick={() => handleDelete(file.name)} colorScheme="red" size="sm">Delete</Button>
+                      <Button as="a" href={`${API_URL}/uploads/${file.name}`} target="_blank" rel="noopener noreferrer" colorScheme="green" size="sm">View</Button>
+                      <Button onClick={() => handleExtract(file.name)} colorScheme="purple" size="sm">Extract Data</Button>
+                    </HStack>
+                  </HStack>
+                </ListItem>
+              ))}
+            </List>
+          </VStack>
+        </VStack>
+      </Container>
+    </ChakraProvider>
   );
 }
 
